@@ -5,4 +5,4 @@ env/
 ENV/
 
 # Jupyter Notebook checkpoints
-.ipynb_checkpoints/
+notebooks/.ipynb_checkpoints/
