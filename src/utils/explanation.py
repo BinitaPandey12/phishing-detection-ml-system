@@ -78,17 +78,16 @@ def generate_explanation(features):
 
     phishing_total = result["phishing_total"]
     legitimate_total = result["legitimate_total"]
-    
+
     top_phishing = phishing_push.head(5)
     top_legitimate = legitimate_push.head(5)
 
-    prediction = predict_url(features) 
-    
+    prediction = predict_url(features)
+
     if prediction == 1:
         prediction_label = "Phishing"
     else:
         prediction_label = "Legitimate"
-        
 
     phishing_reasons = []
 
@@ -137,24 +136,19 @@ def generate_explanation(features):
             f"({abs(legitimate_total):.2f})."
         )
 
-    print("\nFactors increasing phishing suspicion:")
+    formatted_explanation = (
+        "Factors increasing phishing suspicion:\n"
+        + "\n".join(f"• {reason}" for reason in phishing_reasons)
+        + "\n\nFactors supporting legitimacy:\n"
+        + "\n".join(f"• {reason}" for reason in legitimate_reasons)
+        + f"\n\nFinal Prediction: {prediction_label}"
+        + f"\n\nConclusion:\n{final_explanation}"
+    )
 
-    for reason in phishing_reasons:
-        print("•", reason)
-
-    print("\nFactors supporting legitimacy:")
-
-    for reason in legitimate_reasons:
-        print("•", reason)
-
-    print(f"\nFinal Prediction: {prediction_label}")
-
-    print("\nConclusion:")
-    print(final_explanation)
-    
     return {
-    "prediction": prediction_label,
-    "phishing_reasons": phishing_reasons,
-    "legitimate_reasons": legitimate_reasons,
-    "conclusion": final_explanation
+        "prediction": prediction_label,
+        "phishing_reasons": phishing_reasons,
+        "legitimate_reasons": legitimate_reasons,
+        "conclusion": final_explanation,
+        "formatted_explanation": formatted_explanation
     }
