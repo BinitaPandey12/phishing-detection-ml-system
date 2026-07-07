@@ -2,6 +2,7 @@ import json
 from xgboost import XGBClassifier
 import pandas as pd
 
+
 model = XGBClassifier()
 model.load_model("notebooks/xgb_model.ubj")
 

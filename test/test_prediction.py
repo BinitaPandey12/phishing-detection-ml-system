@@ -13,3 +13,4 @@ prediction = predict_url(features)
 print("\n=== Prediction ===")
 print(prediction)
 
+print(model.classes_)

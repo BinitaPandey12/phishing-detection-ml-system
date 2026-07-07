@@ -1,11 +1,37 @@
-def explain_prediction(index_label):
-    
-    idx = X_test.index.get_loc(index_label)
+import json
+import pandas as pd
+import shap
+from models.predict import predict_url
+from src.utils.feature_description import feature_descriptions
 
-    feature_contributions = pd.DataFrame({
-        "Feature": X_test.columns,
-        "SHAP_Value": shap_values[idx]
-    })
+from xgboost import XGBClassifier
+
+model = XGBClassifier()
+model.load_model("notebooks/xgb_model.ubj")
+
+with open("notebooks/model_metadata.json") as f:
+    metadata = json.load(f)
+
+FEATURE_ORDER = metadata["feature_order"]
+
+explainer = shap.TreeExplainer(model)
+
+
+def explain_prediction(features):
+
+    df = pd.DataFrame([features])
+
+    df = df[FEATURE_ORDER]
+
+    shap_values = explainer.shap_values(df)
+
+    feature_contributions = pd.DataFrame(
+        {
+            "Feature": df.columns,
+            "Feature_Value": df.iloc[0].values,
+            "SHAP_Value": shap_values[0],
+        }
+    )
 
     feature_contributions["Abs_SHAP"] = (
         feature_contributions["SHAP_Value"].abs()
@@ -15,53 +41,54 @@ def explain_prediction(index_label):
         feature_contributions[
             feature_contributions["SHAP_Value"] > 0
         ]
-        .sort_values(by="SHAP_Value", ascending=False)
+        .sort_values(
+            by="SHAP_Value",
+            ascending=False,
+        )
     )
 
     legitimate_push = (
         feature_contributions[
             feature_contributions["SHAP_Value"] < 0
         ]
-        .sort_values(by="SHAP_Value")
+        .sort_values(
+            by="SHAP_Value"
+        )
     )
 
     phishing_total = phishing_push["SHAP_Value"].sum()
+
     legitimate_total = legitimate_push["SHAP_Value"].sum()
 
-    return (
-        phishing_push,
-        legitimate_push,
-        phishing_total,
-        legitimate_total
-    )
-    
-    
-    
-    
-    
-    
-    def generate_explanation(index_label):
+    return {
+        "all_features": feature_contributions,
+        "phishing_push": phishing_push,
+        "legitimate_push": legitimate_push,
+        "phishing_total": phishing_total,
+        "legitimate_total": legitimate_total,
+    }
 
-        phishing_push, legitimate_push, phishing_total, legitimate_total = (
-        explain_prediction(index_label)
-    )
 
-    top_legitimate = legitimate_push.head(5)
+def generate_explanation(features):
+
+    result = explain_prediction(features)
+
+    phishing_push = result["phishing_push"]
+    legitimate_push = result["legitimate_push"]
+
+    phishing_total = result["phishing_total"]
+    legitimate_total = result["legitimate_total"]
+    
     top_phishing = phishing_push.head(5)
+    top_legitimate = legitimate_push.head(5)
 
-    legitimate_reasons = []
-
-    for _, row in top_legitimate.iterrows():
-
-        feature = row["Feature"]
-
-        reason = (
-            feature_descriptions
-            .get(feature, {})
-            .get("negative", feature)
-        )
-
-        legitimate_reasons.append(reason)
+    prediction = predict_url(features) 
+    
+    if prediction == 1:
+        prediction_label = "Phishing"
+    else:
+        prediction_label = "Legitimate"
+        
 
     phishing_reasons = []
 
@@ -76,6 +103,20 @@ def explain_prediction(index_label):
         )
 
         phishing_reasons.append(reason)
+
+    legitimate_reasons = []
+
+    for _, row in top_legitimate.iterrows():
+
+        feature = row["Feature"]
+
+        reason = (
+            feature_descriptions
+            .get(feature, {})
+            .get("negative", feature)
+        )
+
+        legitimate_reasons.append(reason)
 
     if abs(legitimate_total) > phishing_total:
 
@@ -96,17 +137,6 @@ def explain_prediction(index_label):
             f"({abs(legitimate_total):.2f})."
         )
 
-   
-    url_position = X_test.index.get_loc(index_label)
-
-    prediction = y_pred[url_position]
-
-    if prediction == 1:
-        prediction_label = "Phishing"
-    else:
-        prediction_label = "Legitimate"
-
-   
     print("\nFactors increasing phishing suspicion:")
 
     for reason in phishing_reasons:
@@ -122,5 +152,9 @@ def explain_prediction(index_label):
     print("\nConclusion:")
     print(final_explanation)
     
-    
-    
+    return {
+    "prediction": prediction_label,
+    "phishing_reasons": phishing_reasons,
+    "legitimate_reasons": legitimate_reasons,
+    "conclusion": final_explanation
+    }
