@@ -1,0 +1,495 @@
+openapi: 3.1.0
+
+info:
+  title: SecureShield Backend API
+  version: 1.0.0
+  description: |
+    SecureShield Backend REST API for phishing and scam detection.
+
+    This API provides:
+      - User authentication
+      - URL and message scanning
+      - Scan history
+      - Dashboard statistics
+      - Feedback management
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local Development
+
+tags:
+  - name: Authentication
+    description: User registration and authentication
+
+  - name: Users
+    description: User profile management
+
+  - name: Scans
+    description: URL and message scanning operations
+
+  - name: Dashboard
+    description: Dashboard statistics
+
+  - name: Feedback
+    description: User feedback operations
+
+paths:
+
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+
+      summary: Register a new user
+
+      operationId: registerUser
+
+      security: [ ]
+
+      requestBody:
+        required: true
+
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+
+      responses:
+
+        "201":
+          description: User registered successfully
+
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+
+        "409":
+          description: Email already exists
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+
+      summary: Authenticate user
+
+      operationId: loginUser
+
+      security: [ ]
+
+      requestBody:
+        required: true
+
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+
+      responses:
+
+        "200":
+          description: Login successful
+
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+
+        "401":
+          description: Invalid credentials
+
+  /auth/refresh-token:
+    post:
+      tags:
+        - Authentication
+
+      summary: Refresh JWT access token
+
+      operationId: refreshToken
+
+      security: [ ]
+
+      requestBody:
+        required: true
+
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshTokenRequest"
+
+      responses:
+
+        "200":
+          description: Token refreshed successfully
+
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+
+        "401":
+          description: Invalid refresh token
+
+  /auth/logout:
+    post:
+      tags:
+        - Authentication
+
+      summary: Logout current user
+
+      operationId: logoutUser
+
+      responses:
+
+        "204":
+          description: Logout successful
+
+  /users/me:
+    get:
+      tags:
+        - Users
+      summary: Get current user profile
+      operationId: getCurrentUser
+      responses:
+        "200":
+          description: User profile retrieved successfully
+
+  /scans:
+    post:
+      tags:
+        - Scans
+      summary: Analyze a URL for Phishing
+      operationId: scanUrl
+      description: Submit a URL to check if it is safe. The system will inspect the link and returns prediction
+      requestBody:
+        required: true
+        description: The URL you want to analyze.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScanRequest"
+      responses:
+        "200":
+          description: Scan completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScanResponse"
+    get:
+      tags:
+        - Scans
+      summary: Retrieve scan history
+      operationId: getScanHistory
+      description: Fetches a list of all previous URL scans performed by the user,
+      responses:
+        "200":
+          description: Scan history retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScanHistoryResponse"
+
+  /scans/{reference}:
+    get:
+      tags:
+        - Scans
+      summary: Retrieve scan details
+      operationId: getScanByReference
+      description: Fetches the full security analysis report for a specific scan using its unique reference ID.
+      parameters:
+        - name: reference
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Scan retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScanReportResponse"
+
+    delete:
+      tags:
+        - Scans
+      summary: Delete a scan
+      operationId: deleteScan
+      description: Permanently removes a scan report from the history using its unique reference.
+      parameters:
+        - name: reference
+          in: path
+          required: true
+          description: The unique reference identifier of the scan to be deleted.
+          schema:
+            type: string
+            example: "SCAN-91299ddf-7a80-4fc8-b95c-5f7108d47f5f"
+      responses:
+        "200":
+          description: Scan deleted successfully
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "Scan deleted successfully."
+
+  /dashboard/statistics:
+    get:
+      tags:
+        - Dashboard
+      summary: Retrieve dashboard statistics
+      operationId: getDashboardStatistics
+      responses:
+        "200":
+          description: Dashboard statistics retrieved successfully
+
+  /feedback:
+    post:
+      tags:
+        - Feedback
+      summary: Submit user feedback
+      operationId: submitFeedback
+      responses:
+        "201":
+          description: Feedback submitted successfully
+
+components:
+  schemas:
+    ScanRequest:
+      type: object
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          x-field-extra-annotation: "@jakarta.validation.constraints.NotBlank"
+          example: "https://accounts.google.com"
+
+
+    ScanResponse:
+      type: object
+      properties:
+        reference:
+          type: string
+          description: Unique reference identifier of the scan.
+          example: "SCAN-20260709-0001"F
+
+        url:
+          type: string
+          description: URL that was scanned.
+          example: "https://accounts.google.com"
+
+        prediction:
+          type: string
+          description: Final prediction returned by the phishing detection model.
+          enum:
+            - LEGITIMATE
+            - PHISHING
+          example: "PHISHING"
+
+        conclusion:
+          type: string
+          description: Short summary of the prediction for immediate display.
+          example: "The phishing-oriented features exerted a stronger overall influence than the legitimate-oriented features."
+
+    ScanHistoryItem:
+      type: object
+      properties:
+        reference:
+          type: string
+          description: Unique reference identifier of the scan.
+          example: "SCAN-20260709-0001"
+
+        url:
+          type: string
+          description: URL that was scanned.
+          example: "https://accounts.google.com"
+
+        prediction:
+          type: string
+          description: Final prediction returned by the phishing detection model.
+          enum:
+            - LEGITIMATE
+            - PHISHING
+          example: "PHISHING"
+
+        conclusion:
+          type: string
+          description: Short summary of the prediction for immediate display.
+          example: "The phishing-oriented features exerted a stronger overall influence than the legitimate-oriented features."
+
+        scannedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the URL was scanned.
+          example: "2026-07-09T15:20:31"
+
+    ScanHistoryResponse:
+      type: object
+      properties:
+        scans:
+          type: array
+          description: List of previously scanned URLs.
+          items:
+            $ref: "#/components/schemas/ScanHistoryItem"
+
+
+
+    ScanReportResponse:
+      type: object
+      properties:
+        reference:
+          type: string
+          example: "SCAN-20260709-0001"
+
+        url:
+          type: string
+          example: "https://accounts.google.com"
+
+        prediction:
+          type: string
+          description: The classification result of the scanned URL.
+          example: "PHISHING"
+
+        legitimateReasons:
+          type: array
+          description: Factors supporting that the URL is legitimate.
+          items:
+            type: string
+          example:
+            - "The website traffic pattern resembled legitimate websites."
+            - "The domain age is relatively old."
+
+        phishingReasons:
+          type: array
+          description: Factors indicating that the URL is likely phishing.
+          items:
+            type: string
+          example:
+            - "The website address structure looked suspicious."
+            - "Website security indicators increased phishing suspicion."
+
+        conclusion:
+          type: string
+          description: Final explanation summarizing why the prediction was made.
+          example: "The phishing-oriented features exerted a stronger overall influence than the legitimate-oriented features."
+
+        scannedAt:
+          type: string
+          format: date-time
+
+    RegisterRequest:
+      type: object
+      required:
+        - firstName
+        - lastName
+        - email
+        - password
+
+      properties:
+        firstName:
+          type: string
+          minLength: 2
+          maxLength: 100
+          example: Bini
+
+        lastName:
+          type: string
+          minLength: 2
+          maxLength: 100
+          example: Pandey
+
+        email:
+          type: string
+          format: email
+          example: bini@example.com
+
+        password:
+          type: string
+          format: password
+          minLength: 8
+          example: Password@123
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+
+      properties:
+        email:
+          type: string
+          format: email
+          example: bini@example.com
+
+        password:
+          type: string
+          format: password
+          example: Password@123
+
+    RefreshTokenRequest:
+      type: object
+
+      required:
+        - refreshToken
+
+      properties:
+        refreshToken:
+          type: string
+
+    UserRole:
+      type: string
+
+      enum:
+        - USER
+        - ADMIN
+
+    UserResponse:
+      type: object
+
+      required:
+        - firstName
+        - lastName
+        - email
+        - role
+
+      properties:
+        firstName:
+          type: string
+
+        lastName:
+          type: string
+
+        email:
+          type: string
+          format: email
+
+        role:
+          $ref: "#/components/schemas/UserRole"
+
+
+    AuthResponse:
+      type: object
+
+      required:
+        - accessToken
+        - refreshToken
+        - user
+
+      properties:
+
+        accessToken:
+          type: string
+
+        refreshToken:
+          type: string
+
+        user:
+          $ref: "#/components/schemas/UserResponse"
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
