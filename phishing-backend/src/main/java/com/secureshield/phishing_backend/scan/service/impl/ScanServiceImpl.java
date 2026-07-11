@@ -8,10 +8,14 @@ import com.secureshield.phishing_backend.scan.mapper.ScanMapper;
 import com.secureshield.phishing_backend.scan.persistence.entity.ScanEntity;
 import com.secureshield.phishing_backend.scan.report.CsvReportGenerator;
 import com.secureshield.phishing_backend.scan.repository.JpaScanRepository;
+import com.secureshield.phishing_backend.scan.user.entity.UserEntity;
+import com.secureshield.phishing_backend.scan.user.repository.JpaUserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -20,38 +24,76 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ScanServiceImpl implements ScanService {
 
+    private final JpaUserRepository userRepository;
     private final CsvReportGenerator csvReportGenerator;
     private final FlaskClient flaskClient;
     private final JpaScanRepository scanRepository;
     private final ScanMapper scanMapper;
 
+
     @Override
     public ScanResponse scan(ScanRequest request) {
 
+
         FlaskPredictionResponse flaskResponse =
                 flaskClient.predict(request.getUrl());
-        System.out.println("Prediction: " + flaskResponse.getPrediction());
-        System.out.println("Conclusion: " + flaskResponse.getConclusion());
-        System.out.println("Formatted Explanation: " + flaskResponse.getFormattedExplanation());
-        System.out.println("Phishing Reasons: " + flaskResponse.getPhishingReasons());
-        System.out.println("Legitimate Reasons: " + flaskResponse.getLegitimateReasons());
 
-        Scan scan = scanMapper.fromFlaskResponse(
+
+        Scan scan =
+                scanMapper.fromFlaskResponse(
                         flaskResponse,
-                        request.getUrl());
+                        request.getUrl()
+                );
+
 
         scan.setReference(generateReference());
 
-        scan.setScannedAt(OffsetDateTime.now());
+        scan.setScannedAt(
+                OffsetDateTime.now()
+        );
 
-        ScanEntity saved =
-                scanRepository.save(
-                        scanMapper.toEntity(scan));
 
-        return scanMapper.toScanResponse(
-                scanMapper.toDomain(saved));
+        Authentication authentication =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication();
 
+
+        // Logged in user
+        if (authentication != null
+                && authentication.isAuthenticated()
+                && !(authentication instanceof AnonymousAuthenticationToken)) {
+
+
+            String email = authentication.getName();
+
+
+            UserEntity user =
+                    userRepository.findByEmail(email)
+                            .orElseThrow();
+
+
+            ScanEntity entity =
+                    scanMapper.toEntity(scan);
+
+
+            entity.setUser(user);
+
+
+            ScanEntity saved =
+                    scanRepository.save(entity);
+
+
+            return scanMapper.toScanResponse(
+                    scanMapper.toDomain(saved)
+            );
+        }
+
+
+        // Guest user
+        return scanMapper.toScanResponse(scan);
     }
+
 
     @Override
     public ScanReportResponse getScanReport(String reference) {
@@ -70,10 +112,11 @@ public class ScanServiceImpl implements ScanService {
         return "SCAN-" + UUID.randomUUID();
 
     }
-    @Override
-    public ScanHistoryResponse getScanHistory() {
 
-        List<ScanHistoryItem> scans = scanRepository.findAll()
+    @Override
+    public ScanHistoryResponse getScanHistory(String email) {
+
+        List<ScanHistoryItem> scans = scanRepository.findByUserEmail(email)
                 .stream()
                 .map(scanMapper::toDomain)
                 .map(scanMapper::toScanHistoryItem)
@@ -84,6 +127,7 @@ public class ScanServiceImpl implements ScanService {
 
         return response;
     }
+
     @Override
     public void deleteScan(String reference) {
 
@@ -103,11 +147,6 @@ public class ScanServiceImpl implements ScanService {
 
         return csvReportGenerator.generate(scan);
     }
-
-
-
-
-
 
 
 }

@@ -20,7 +20,6 @@ explainer = shap.TreeExplainer(model)
 def explain_prediction(features):
 
     df = pd.DataFrame([features])
-
     df = df[FEATURE_ORDER]
 
     shap_values = explainer.shap_values(df)
@@ -32,12 +31,15 @@ def explain_prediction(features):
             "SHAP_Value": shap_values[0],
         }
     )
+    #yo
+    print("\n=== Feature Contributions ===")
+    print(feature_contributions[["Feature", "Feature_Value", "SHAP_Value"]])
 
     feature_contributions["Abs_SHAP"] = (
         feature_contributions["SHAP_Value"].abs()
     )
 
-    phishing_push = (
+    legitimate_push = (
         feature_contributions[
             feature_contributions["SHAP_Value"] > 0
         ]
@@ -47,7 +49,7 @@ def explain_prediction(features):
         )
     )
 
-    legitimate_push = (
+    phishing_push = (
         feature_contributions[
             feature_contributions["SHAP_Value"] < 0
         ]
@@ -83,11 +85,14 @@ def generate_explanation(features):
     top_legitimate = legitimate_push.head(5)
 
     prediction = predict_url(features)
+    print("Raw Prediction:", prediction)
+    print("Phishing Total:", phishing_total)
+    print("Legitimate Total:", legitimate_total)
 
     if prediction == 1:
-        prediction_label = "PHISHING"
-    else:
         prediction_label = "LEGITIMATE"
+    else:
+        prediction_label = "PHISHING"
 
     phishing_reasons = []
 

@@ -99,38 +99,6 @@ paths:
         "401":
           description: Invalid credentials
 
-  /auth/refresh-token:
-    post:
-      tags:
-        - Authentication
-
-      summary: Refresh JWT access token
-
-      operationId: refreshToken
-
-      security: [ ]
-
-      requestBody:
-        required: true
-
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/RefreshTokenRequest"
-
-      responses:
-
-        "200":
-          description: Token refreshed successfully
-
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AuthResponse"
-
-        "401":
-          description: Invalid refresh token
-
   /auth/logout:
     post:
       tags:
@@ -145,23 +113,15 @@ paths:
         "204":
           description: Logout successful
 
-  /users/me:
-    get:
-      tags:
-        - Users
-      summary: Get current user profile
-      operationId: getCurrentUser
-      responses:
-        "200":
-          description: User profile retrieved successfully
-
   /scans:
     post:
       tags:
         - Scans
       summary: Analyze a URL for Phishing
       operationId: scanUrl
-      description: Submit a URL to check if it is safe. The system will inspect the link and returns prediction
+      description: |
+        Allows users to scan a URL without authentication.
+        Returns a lightweight phishing detection response
       requestBody:
         required: true
         description: The URL you want to analyze.
@@ -179,6 +139,8 @@ paths:
     get:
       tags:
         - Scans
+      security:
+        - bearerAuth: [ ]
       summary: Retrieve scan history
       operationId: getScanHistory
       description: Fetches a list of all previous URL scans performed by the user,
@@ -194,6 +156,10 @@ paths:
     get:
       tags:
         - Scans
+
+      security:
+        - bearerAuth: [ ]
+
       summary: Retrieve scan details
       operationId: getScanByReference
       description: Fetches the full security analysis report for a specific scan using its unique reference ID.
@@ -214,6 +180,10 @@ paths:
     delete:
       tags:
         - Scans
+
+      security:
+        - bearerAuth: [ ]
+
       summary: Delete a scan
       operationId: deleteScan
       description: Permanently removes a scan report from the history using its unique reference.
@@ -273,7 +243,9 @@ components:
         reference:
           type: string
           description: Unique reference identifier of the scan.
-          example: "SCAN-20260709-0001"F
+          example: "SCAN-20260709-0001"
+
+
 
         url:
           type: string
@@ -428,65 +400,42 @@ components:
           format: password
           example: Password@123
 
-    RefreshTokenRequest:
+
+    AuthResponse:
       type: object
-
       required:
-        - refreshToken
-
+        - accessToken
+        - user
       properties:
-        refreshToken:
+        accessToken:
           type: string
+          description: JWT access token
+        user:
+          $ref: "#/components/schemas/UserResponse"
 
     UserRole:
       type: string
-
       enum:
         - USER
         - ADMIN
 
     UserResponse:
       type: object
-
       required:
         - firstName
         - lastName
         - email
         - role
-
       properties:
         firstName:
           type: string
-
         lastName:
           type: string
-
         email:
           type: string
           format: email
-
         role:
           $ref: "#/components/schemas/UserRole"
-
-
-    AuthResponse:
-      type: object
-
-      required:
-        - accessToken
-        - refreshToken
-        - user
-
-      properties:
-
-        accessToken:
-          type: string
-
-        refreshToken:
-          type: string
-
-        user:
-          $ref: "#/components/schemas/UserResponse"
 
   securitySchemes:
     bearerAuth:
