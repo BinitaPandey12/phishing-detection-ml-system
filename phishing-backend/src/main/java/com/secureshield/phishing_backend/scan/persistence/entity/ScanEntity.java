@@ -1,6 +1,7 @@
 package com.secureshield.phishing_backend.scan.persistence.entity;
 
 import com.secureshield.phishing_backend.scan.domain.Prediction;
+import com.secureshield.phishing_backend.scan.user.entity.UserEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -8,7 +9,6 @@ import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -51,4 +51,8 @@ public class ScanEntity {
 
     @Column(nullable = false)
     private OffsetDateTime scannedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private UserEntity user;
 }

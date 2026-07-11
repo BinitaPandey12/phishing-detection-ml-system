@@ -150,6 +150,12 @@ def dns_record(url):
         return 0
 
 
+
+
+from urllib.parse import urlparse
+from datetime import datetime, timezone
+import whois
+
 def age_of_domain(url):
     try:
         hostname = urlparse(url).hostname
@@ -161,16 +167,32 @@ def age_of_domain(url):
         if isinstance(creation_date, list):
             creation_date = creation_date[0]
 
-        age_days = (datetime.now() - creation_date).days
+        if creation_date is None:
+            print("Creation date not found")
+            return 0
 
-        if age_days >= 180:
-            return 1
+        # Make creation_date timezone-aware if needed
+        if creation_date.tzinfo is None:
+            creation_date = creation_date.replace(tzinfo=timezone.utc)
 
+        now = datetime.now(timezone.utc)
+
+        age_days = (now - creation_date).days
+
+        # print("Creation Date:", creation_date)
+        # print("Current Date:", now)
+        # print("Age Days:", age_days)
+
+        return 1 if age_days >= 180 else 0
+
+    except Exception as e:
+        print("age_of_domain ERROR:", e)
         return 0
 
-    except Exception:
-        return 0
 
+from urllib.parse import urlparse
+from datetime import datetime, timezone
+import whois
 
 def domain_registration_length(url):
     try:
@@ -183,23 +205,63 @@ def domain_registration_length(url):
         if isinstance(expiration_date, list):
             expiration_date = expiration_date[0]
 
-        remaining_days = (expiration_date - datetime.now()).days
+        if expiration_date is None:
+            print("Expiration date not found")
+            return 0
 
-        if remaining_days > 365:
-            return 1
+        # Make timezone-aware if needed
+        if expiration_date.tzinfo is None:
+            expiration_date = expiration_date.replace(tzinfo=timezone.utc)
 
+        now = datetime.now(timezone.utc)
+
+        remaining_days = (expiration_date - now).days
+
+        print("Expiration Date:", expiration_date)
+        print("Current Date:", now)
+        print("Remaining Days:", remaining_days)
+
+        return 1 if remaining_days > 365 else 0
+
+    except Exception as e:
+        print("domain_registration_length ERROR:", e)
         return 0
 
-    except Exception:
-        return 0
 
+from urllib.parse import urlparse
+from datetime import datetime
+import ssl
+import socket
 
-# TODO: Implement certificate validation
 def ssl_final_state(url):
-    if url.startswith("https://"):
-        return 1
+    try:
+        parsed = urlparse(url)
 
-    return 0
+        if parsed.scheme.lower() != "https":
+            return 0
+
+        hostname = parsed.hostname
+
+        context = ssl.create_default_context()
+
+        with socket.create_connection((hostname, 443), timeout=5) as sock:
+            with context.wrap_socket(sock, server_hostname=hostname) as ssock:
+
+                cert = ssock.getpeercert()
+
+                not_after = datetime.strptime(
+                    cert["notAfter"],
+                    "%b %d %H:%M:%S %Y %Z"
+                )
+
+                if not_after < datetime.utcnow():
+                    return 0
+
+                return 1
+
+    except Exception as e:
+        print("SSL ERROR:", e)
+        return 0
    
     
 def fetch_page(url):
@@ -326,38 +388,437 @@ def on_mouseover(url):
         return 0
     
     
+from urllib.parse import urljoin, urlparse
+
+from urllib.parse import urljoin, urlparse
+from bs4 import BeautifulSoup
+
+
 def request_url(url):
-    return 0.5
+    try:
+        html = fetch_page(url)
+
+        if html is None:
+            return 0
+
+        soup = BeautifulSoup(html, "html.parser")
+
+        hostname = urlparse(url).hostname
+        hostname = hostname.lower().replace("www.", "")
+
+        resources = []
+
+        resources.extend(soup.find_all("img"))
+        resources.extend(soup.find_all("audio"))
+        resources.extend(soup.find_all("embed"))
+        resources.extend(soup.find_all("iframe"))
+        resources.extend(soup.find_all("script"))
+        resources.extend(soup.find_all("source"))
+        resources.extend(soup.find_all("video"))
+
+        total = 0
+        external = 0
+
+        for tag in resources:
+
+            src = tag.get("src")
+
+            if not src:
+                continue
+
+            src = src.strip()
+
+            # Ignore inline/base64 resources
+            if src.startswith("data:"):
+                continue
+
+            full_url = urljoin(url, src)
+
+            parsed = urlparse(full_url)
+
+            # Relative URL -> internal
+            if parsed.hostname is None:
+                total += 1
+                continue
+
+            total += 1
+
+            resource_host = parsed.hostname.lower().replace("www.", "")
+
+            if resource_host != hostname:
+                external += 1
+
+        if total == 0:
+            return 1
+
+        percentage = (external / total) * 100
+
+        if percentage < 22:
+            return 1
+        elif percentage <= 61:
+            return 0.5
+        else:
+            return 0
+
+    except Exception:
+        return 0
+
+from urllib.parse import urljoin, urlparse
+from bs4 import BeautifulSoup
+
 
 def url_of_anchor(url):
-    return 0.5
+
+    try:
+
+        html = fetch_page(url)
+
+        if html is None:
+            return 0
+
+        soup = BeautifulSoup(html, "html.parser")
+
+        hostname = (
+            urlparse(url)
+            .hostname
+            .lower()
+            .replace("www.", "")
+        )
+
+        anchors = soup.find_all("a")
+
+        if len(anchors) == 0:
+            return 1
+
+        suspicious = 0
+
+        trusted_domains = [
+            hostname,
+            "gstatic.com",
+            "googleusercontent.com",
+            "googleapis.com",
+            "cloudflare.com",
+            "cloudflareinsights.com",
+        ]
+
+        for anchor in anchors:
+
+            href = anchor.get("href")
+
+            if not href:
+                suspicious += 1
+                continue
+
+            href = href.strip()
+
+            if href == "":
+                suspicious += 1
+                continue
+
+            if href.startswith("#"):
+                suspicious += 1
+                continue
+
+            if href.lower().startswith("javascript"):
+                suspicious += 1
+                continue
+
+            full_url = urljoin(url, href)
+
+            parsed = urlparse(full_url)
+
+            # Relative links are internal
+            if parsed.hostname is None:
+                continue
+
+            link_host = (
+                parsed.hostname
+                .lower()
+                .replace("www.", "")
+            )
+
+            internal = any(
+                link_host == domain
+                or link_host.endswith("." + domain)
+                for domain in trusted_domains
+            )
+
+            if not internal:
+                suspicious += 1
+
+        percentage = suspicious / len(anchors) * 100
+
+        if percentage < 31:
+            return 1
+        elif percentage <= 67:
+            return 0.5
+        else:
+            return 0
+
+    except Exception:
+        return 0
+
+from urllib.parse import urljoin, urlparse
+from bs4 import BeautifulSoup
+
 
 def links_in_tags(url):
-    return 0.5
+
+    try:
+
+        html = fetch_page(url)
+
+        if html is None:
+            return 0
+
+        soup = BeautifulSoup(html, "html.parser")
+
+        hostname = (
+            urlparse(url)
+            .hostname
+            .lower()
+            .replace("www.", "")
+        )
+
+        tags = []
+
+        tags.extend(soup.find_all("script"))
+        tags.extend(soup.find_all("link"))
+        tags.extend(soup.find_all("meta"))
+
+        total = 0
+        external = 0
+
+        trusted_domains = [
+            hostname,
+            "googleapis.com",
+            "gstatic.com",
+            "cloudflare.com",
+            "cloudflareinsights.com",
+            "jsdelivr.net",
+            "bootstrapcdn.com",
+            "cdnjs.cloudflare.com",
+            "unpkg.com",
+        ]
+
+        for tag in tags:
+
+            link = tag.get("src") or tag.get("href") or tag.get("content")
+
+            if not link:
+                continue
+
+            total += 1
+
+            full_url = urljoin(url, link)
+
+            parsed = urlparse(full_url)
+
+            # Relative URL
+            if parsed.hostname is None:
+                continue
+
+            link_host = (
+                parsed.hostname
+                .lower()
+                .replace("www.", "")
+            )
+
+            internal = any(
+                link_host == domain
+                or link_host.endswith("." + domain)
+                for domain in trusted_domains
+            )
+
+            if not internal:
+                external += 1
+
+        if total == 0:
+            return 1
+
+        percentage = (external / total) * 100
+
+        if percentage < 17:
+            return 1
+        elif percentage <= 81:
+            return 0.5
+        else:
+            return 0
+
+    except Exception:
+        return 0
+
+from urllib.parse import urljoin, urlparse
+from bs4 import BeautifulSoup
+
 
 def sfh(url):
-    return 0.5
+
+    try:
+
+        html = fetch_page(url)
+
+        if html is None:
+            return 0
+
+        soup = BeautifulSoup(html, "html.parser")
+
+        forms = soup.find_all("form")
+
+        # No forms present
+        if len(forms) == 0:
+            return 1
+
+        hostname = (
+            urlparse(url)
+            .hostname
+            .lower()
+            .replace("www.", "")
+        )
+
+        suspicious = 0
+
+        for form in forms:
+
+            action = form.get("action")
+
+            # Empty action attribute
+            if action is None:
+                suspicious += 1
+                continue
+
+            action = action.strip()
+
+            # Blank or about:blank
+            if action == "" or action.lower() == "about:blank":
+                suspicious += 1
+                continue
+
+            # javascript:void(0)
+            if action.lower().startswith("javascript"):
+                suspicious += 1
+                continue
+
+            full_url = urljoin(url, action)
+
+            parsed = urlparse(full_url)
+
+            # Relative URL -> same website
+            if parsed.hostname is None:
+                continue
+
+            form_host = (
+                parsed.hostname
+                .lower()
+                .replace("www.", "")
+            )
+
+            if (
+                form_host != hostname
+                and not form_host.endswith("." + hostname)
+            ):
+                suspicious += 1
+
+        percentage = suspicious / len(forms) * 100
+
+        if percentage == 0:
+            return 1
+        elif percentage < 50:
+            return 0.5
+        else:
+            return 0
+
+    except Exception:
+        return 0
+
+from urllib.parse import urlparse
+import whois
+
 
 def abnormal_url(url):
-    return 0.5
+
+    try:
+
+        hostname = (
+            urlparse(url)
+            .hostname
+            .lower()
+            .replace("www.", "")
+        )
+
+        domain = whois.whois(hostname)
+
+        registered = domain.domain_name
+
+        if not registered:
+            return 0
+
+        if isinstance(registered, list):
+            registered = registered[0]
+
+        registered = (
+            registered
+            .lower()
+            .replace("www.", "")
+        )
+
+        # Exact match
+        if hostname == registered:
+            return 1
+
+        # Allow legitimate subdomains
+        if hostname.endswith("." + registered):
+            return 1
+
+        return 0
+
+    except Exception:
+        return 0
 
 def popup_window(url):
-    return 0.5
+
+    try:
+
+        html = fetch_page(url)
+
+        if html is None:
+            return 0
+
+        html = html.lower()
+
+        suspicious_patterns = [
+
+            "window.open(",
+            "alert(",
+            "confirm(",
+            "prompt("
+
+        ]
+
+        for pattern in suspicious_patterns:
+
+            if pattern in html:
+                return 0
+
+        return 1
+
+    except Exception:
+        return 0
 
 def web_traffic(url):
-    return 0.5
+    return 1
 
 def page_rank(url):
-    return 0.5
+    return 1
 
 def google_index(url):
-    return 0.5
+    return 1
 
 def links_pointing_to_page(url):
-    return 0.5
+    return 1
 
 def statistical_report(url):
-    return 0.5
+    return 1
         
 def extract_url_features(url):
     return {

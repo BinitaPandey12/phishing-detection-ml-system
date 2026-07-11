@@ -29,6 +29,7 @@ def predict():
         #     }), 400
 
         result = analyze_url(url)
+        
 
         return jsonify(result)
 
