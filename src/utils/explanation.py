@@ -122,23 +122,24 @@ def generate_explanation(features):
 
         legitimate_reasons.append(reason)
 
-    if abs(legitimate_total) > phishing_total:
+    if prediction_label == "PHISHING":
 
         final_explanation = (
-            f"Although several phishing indicators were detected, "
-            f"the legitimate-oriented features exerted a stronger "
-            f"overall influence ({abs(legitimate_total):.2f}) "
-            f"than the phishing-oriented features "
-            f"({phishing_total:.2f})."
+            f"The model classified this URL as phishing. "
+            f"The cumulative phishing influence score was {phishing_total:.2f}, "
+            f"while the legitimate influence score was +{legitimate_total:.2f}. "
+            f"In this explanation, negative scores represent features pushing the prediction toward phishing, "
+            f"whereas positive scores represent features pushing it toward legitimacy."
         )
 
     else:
 
         final_explanation = (
-            f"The phishing-oriented features exerted a stronger "
-            f"overall influence ({phishing_total:.2f}) than the "
-            f"legitimate-oriented features "
-            f"({abs(legitimate_total):.2f})."
+            f"The model classified this URL as legitimate. "
+            f"The cumulative legitimate influence score was +{legitimate_total:.2f}, "
+            f"while the phishing influence score was {phishing_total:.2f}. "
+            f"In this explanation, positive scores represent features pushing the prediction toward legitimacy, "
+            f"whereas negative scores represent features pushing it toward phishing."
         )
 
     formatted_explanation = (
