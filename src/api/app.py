@@ -23,10 +23,10 @@ def predict():
                 "error": "URL is required"
             }), 400
 
-        if not is_valid_url(url):
-            return jsonify({
-                "error": "Please provide a valid URL."
-            }), 400
+        # if not is_valid_url(url):
+        #     return jsonify({
+        #         "error": "Please provide a valid URL."
+        #     }), 400
 
         result = analyze_url(url)
 

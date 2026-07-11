@@ -85,9 +85,9 @@ def generate_explanation(features):
     prediction = predict_url(features)
 
     if prediction == 1:
-        prediction_label = "Phishing"
+        prediction_label = "PHISHING"
     else:
-        prediction_label = "Legitimate"
+        prediction_label = "LEGITIMATE"
 
     phishing_reasons = []
 
