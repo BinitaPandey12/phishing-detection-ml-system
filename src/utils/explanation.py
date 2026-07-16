@@ -31,8 +31,7 @@ def explain_prediction(features):
             "SHAP_Value": shap_values[0],
         }
     )
-    #yo
-    print("\n=== Feature Contributions ===")
+    # print("\n=== Feature Contributions ===")
     print(feature_contributions[["Feature", "Feature_Value", "SHAP_Value"]])
 
     feature_contributions["Abs_SHAP"] = (
@@ -103,7 +102,7 @@ def generate_explanation(features):
         reason = (
             feature_descriptions
             .get(feature, {})
-            .get("positive", feature)
+            .get("negative", feature)
         )
 
         phishing_reasons.append(reason)
@@ -117,7 +116,7 @@ def generate_explanation(features):
         reason = (
             feature_descriptions
             .get(feature, {})
-            .get("negative", feature)
+            .get("positive", feature)
         )
 
         legitimate_reasons.append(reason)
