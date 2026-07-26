@@ -7,7 +7,7 @@ from src.utils.feature_description import feature_descriptions
 from xgboost import XGBClassifier
 
 model = XGBClassifier()
-model.load_model("notebooks/xgb_model.ubj")
+model.load_model("models/url/xgb_model.ubj")
 
 with open("notebooks/model_metadata.json") as f:
     metadata = json.load(f)
