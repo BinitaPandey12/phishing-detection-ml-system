@@ -4,12 +4,13 @@ import pandas as pd
 
 
 model = XGBClassifier()
-model.load_model("notebooks/xgb_model.ubj")
+model.load_model("models/url/xgb_model.ubj")
 
 with open("notebooks/model_metadata.json") as f:
     metadata = json.load(f)
 
 FEATURE_ORDER = metadata["feature_order"]
+
 
 def predict_url(features):
 
