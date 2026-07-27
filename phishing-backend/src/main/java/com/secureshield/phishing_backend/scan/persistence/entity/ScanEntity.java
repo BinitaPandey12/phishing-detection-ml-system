@@ -1,6 +1,8 @@
 package com.secureshield.phishing_backend.scan.persistence.entity;
 
-import com.secureshield.phishing_backend.scan.domain.Prediction;
+import com.secureshield.backend.model.Prediction;
+import com.secureshield.backend.model.ScanType;
+import com.secureshield.backend.model.UrlAnalysis;
 import com.secureshield.phishing_backend.scan.user.entity.UserEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -28,12 +30,22 @@ public class ScanEntity {
     @Column(nullable = false, unique = true)
     private String reference;
 
-    @Column(nullable = false)
-    private String url;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Prediction prediction;
+    private ScanType scanType;
+
+    @Column
+    private String url;
+
+    @Column(columnDefinition = "TEXT")
+    private String message;
+
+    @Column(name = "prediction")
+    @Enumerated(EnumType.STRING)
+    private Prediction overallPrediction;
+
+    @Enumerated(EnumType.STRING)
+    private Prediction messagePrediction;
 
     @Column(columnDefinition = "TEXT")
     private String conclusion;
@@ -48,6 +60,22 @@ public class ScanEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private List<String> legitimateReasons;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private List<String> messagePhishingReasons;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private List<String> messageLegitimateReasons;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private List<String> urlsFound;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private List<UrlAnalysis> urlResults;
 
     @Column(nullable = false)
     private OffsetDateTime scannedAt;

@@ -113,7 +113,7 @@ paths:
         "204":
           description: Logout successful
 
-  /scans:
+  /scans/url:
     post:
       tags:
         - Scans
@@ -136,14 +136,22 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ScanResponse"
+  /scans:
     get:
       tags:
         - Scans
       security:
         - bearerAuth: [ ]
-      summary: Retrieve scan history
-      operationId: getScanHistory
-      description: Fetches a list of all previous URL scans performed by the user,
+      summary: Retrieve all scans
+      operationId: getAllScans
+      description: Retrieves the authenticated user's all scan history.By default, both URL and message scans are returned.Optionally, results can be filtered by scan type using the `type` query parameter..
+      parameters:
+        - name: type
+          in: query
+          required: false
+          description: Filter scan history by scan type.
+          schema:
+            $ref: "#/components/schemas/ScanType"
       responses:
         "200":
           description: Scan history retrieved successfully
@@ -151,6 +159,37 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ScanHistoryResponse"
+
+  /scans/messages:
+    post:
+      tags:
+        - Scans
+
+      summary: Analyze a message for phishing
+
+      operationId: scanMessage
+
+      description: |
+        Analyzes a message for phishing or scam content.
+        The message may contain plain text, URLs, or both.
+        URL extraction and combined prediction are performed by the Flask ML service.
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageScanRequest"
+
+      responses:
+        "200":
+          description: Message scan completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageScanResponse"
+
+
 
   /scans/{reference}:
     get:
@@ -162,7 +201,7 @@ paths:
 
       summary: Retrieve scan details
       operationId: getScanByReference
-      description: Fetches the full security analysis report for a specific scan using its unique reference ID.
+      description: Fetches the full details for a specific scan using its unique reference ID.
       parameters:
         - name: reference
           in: path
@@ -186,7 +225,7 @@ paths:
 
       summary: Delete a scan
       operationId: deleteScan
-      description: Permanently removes a scan report from the history using its unique reference.
+      description: Permanently removes a scan details from the history using its unique reference.
       parameters:
         - name: reference
           in: path
@@ -236,6 +275,14 @@ components:
           x-field-extra-annotation: "@jakarta.validation.constraints.NotBlank"
           example: "https://accounts.google.com"
 
+    Prediction:
+      type: string
+      description: Final prediction.
+      enum:
+        - LEGITIMATE
+        - PHISHING
+
+
 
     ScanResponse:
       type: object
@@ -245,20 +292,16 @@ components:
           description: Unique reference identifier of the scan.
           example: "SCAN-20260709-0001"
 
-
+        scanType:
+          $ref: "#/components/schemas/ScanType"
 
         url:
           type: string
           description: URL that was scanned.
           example: "https://accounts.google.com"
 
-        prediction:
-          type: string
-          description: Final prediction returned by the phishing detection model.
-          enum:
-            - LEGITIMATE
-            - PHISHING
-          example: "PHISHING"
+        overallPrediction:
+          $ref: "#/components/schemas/Prediction"
 
         conclusion:
           type: string
@@ -273,18 +316,21 @@ components:
           description: Unique reference identifier of the scan.
           example: "SCAN-20260709-0001"
 
+        scanType:
+          $ref: "#/components/schemas/ScanType"
+
         url:
           type: string
+          nullable: true
           description: URL that was scanned.
           example: "https://accounts.google.com"
 
-        prediction:
+        message:
           type: string
-          description: Final prediction returned by the phishing detection model.
-          enum:
-            - LEGITIMATE
-            - PHISHING
-          example: "PHISHING"
+          nullable: true
+
+        overallPrediction:
+          $ref: "#/components/schemas/Prediction"
 
         conclusion:
           type: string
@@ -309,47 +355,152 @@ components:
 
 
     ScanReportResponse:
+      oneOf:
+        - $ref: "#/components/schemas/UrlScanReportResponse"
+        - $ref: "#/components/schemas/MessageScanReportResponse"
+
+    UrlScanReportResponse:
       type: object
+
       properties:
+
         reference:
           type: string
-          example: "SCAN-20260709-0001"
+
+        scanType:
+          $ref: "#/components/schemas/ScanType"
 
         url:
           type: string
-          example: "https://accounts.google.com"
 
-        prediction:
+        overallPrediction:
+          $ref: "#/components/schemas/Prediction"
+
+        formattedExplanation:
           type: string
-          description: The classification result of the scanned URL.
-          example: "PHISHING"
-
-        legitimateReasons:
-          type: array
-          description: Factors supporting that the URL is legitimate.
-          items:
-            type: string
-          example:
-            - "The website traffic pattern resembled legitimate websites."
-            - "The domain age is relatively old."
-
-        phishingReasons:
-          type: array
-          description: Factors indicating that the URL is likely phishing.
-          items:
-            type: string
-          example:
-            - "The website address structure looked suspicious."
-            - "Website security indicators increased phishing suspicion."
 
         conclusion:
           type: string
-          description: Final explanation summarizing why the prediction was made.
-          example: "The phishing-oriented features exerted a stronger overall influence than the legitimate-oriented features."
+
+        legitimateReasons:
+          type: array
+          items:
+            type: string
+
+        phishingReasons:
+          type: array
+          items:
+            type: string
 
         scannedAt:
           type: string
           format: date-time
+
+    MessageScanReportResponse:
+      type: object
+
+      properties:
+
+        reference:
+          type: string
+
+        scanType:
+          $ref: "#/components/schemas/ScanType"
+
+        message:
+          type: string
+
+        overallPrediction:
+          $ref: "#/components/schemas/Prediction"
+
+        messagePrediction:
+          $ref: "#/components/schemas/Prediction"
+
+        messageLegitimateReasons:
+          type: array
+          items:
+            type: string
+
+        messagePhishingReasons:
+          type: array
+          items:
+            type: string
+
+        urlsFound:
+          type: array
+          items:
+            type: string
+
+        urlResults:
+          type: array
+          items:
+            $ref: "#/components/schemas/UrlAnalysis"
+
+        scannedAt:
+          type: string
+          format: date-time
+
+    UrlAnalysis:
+      type: object
+
+      properties:
+
+        prediction:
+          $ref: "#/components/schemas/Prediction"
+
+        legitimateReasons:
+          type: array
+          items:
+            type: string
+
+        phishingReasons:
+          type: array
+          items:
+            type: string
+
+        formattedExplanation:
+          type: string
+
+        conclusion:
+          type: string
+
+    MessageScanRequest:
+      type: object
+
+      required:
+        - message
+
+      properties:
+
+        message:
+          type: string
+          x-field-extra-annotation: "@jakarta.validation.constraints.NotBlank"
+          example: "Congratulations! Click https://google.com to claim your reward."
+
+    MessageScanResponse:
+      type: object
+
+      properties:
+
+        reference:
+          type: string
+          example: "SCAN-20260726-0002"
+
+        scanType:
+          $ref: "#/components/schemas/ScanType"
+
+        overallPrediction:
+          $ref: "#/components/schemas/Prediction"
+
+        scannedAt:
+          type: string
+          format: date-time
+
+        urlsDetected:
+          type: integer
+          format: int32
+          description: Number of URLs detected in the submitted message.
+          example: 1
 
     RegisterRequest:
       type: object
@@ -436,6 +587,12 @@ components:
           format: email
         role:
           $ref: "#/components/schemas/UserRole"
+
+    ScanType:
+      type: string
+      enum:
+        - URL
+        - MESSAGE
 
   securitySchemes:
     bearerAuth:

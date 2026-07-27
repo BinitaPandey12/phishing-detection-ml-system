@@ -1,19 +1,18 @@
 package com.secureshield.phishing_backend.scan.service.impl;
 
-import com.secureshield.backend.model.ScanHistoryResponse;
-import com.secureshield.backend.model.ScanReportResponse;
-import com.secureshield.backend.model.ScanRequest;
-import com.secureshield.backend.model.ScanResponse;
+import com.secureshield.backend.model.*;
 
 public interface ScanService {
 
     ScanResponse scan(ScanRequest request);
 
-    ScanReportResponse getScanReport(String reference);
+    ScanReportResponse getScanByReference(String reference);
 
-    ScanHistoryResponse getScanHistory(String email);
+    ScanHistoryResponse getAllScans(String email, ScanType type);
 
     void deleteScan(String reference);
 
     byte[] downloadScanReport(String reference);
+
+    MessageScanResponse scanMessage(MessageScanRequest request);
 }

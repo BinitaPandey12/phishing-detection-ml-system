@@ -53,15 +53,13 @@ public class SecurityConfiguration {
                                 "/swagger-ui.html")
                         .permitAll()
 
-                        // Hybrid scan endpoint
-                        // Guest + logged-in users can scan
                         .requestMatchers(
                                 org.springframework.http.HttpMethod.POST,
-                                "/scans"
+                                "/scans",
+                                "/scans/messages"
                         )
                         .permitAll()
 
-                        // Only logged-in users can view history
                         .requestMatchers(
                                 org.springframework.http.HttpMethod.GET,
                                 "/scans"
@@ -69,7 +67,6 @@ public class SecurityConfiguration {
                         .authenticated()
 
 
-                        // Only logged-in users can see details/download/delete
                         .requestMatchers(
                                 org.springframework.http.HttpMethod.GET,
                                 "/scans/{reference}",

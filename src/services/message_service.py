@@ -93,16 +93,16 @@ def analyze_message(message: str):
             phishing_url_found = True
 
     if message_is_spam or phishing_url_found:
-        final_prediction = "Phishing"
+        final_prediction = "PHISHING"
         prediction_value = 0
     else:
-        final_prediction = "Legitimate"
+        final_prediction = "LEGITIMATE"
         prediction_value = 1
 
     return {
         "Final prediction": final_prediction,
         "prediction_value": prediction_value,
-        "message_prediction": "Phishing" if message_is_spam else "Legitimate",
+        "message_prediction": "PHISHING" if message_is_spam else "LEGITIMATE",
         "message_phishing_reasons": message_phishing_reasons,
         "message_legitimate_reasons": message_legitimate_reasons,
         "urls_found": extracted_urls,
