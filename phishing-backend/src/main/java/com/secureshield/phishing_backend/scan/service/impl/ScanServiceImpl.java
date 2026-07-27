@@ -3,6 +3,7 @@ package com.secureshield.phishing_backend.scan.service.impl;
 import com.secureshield.backend.model.*;
 import com.secureshield.phishing_backend.scan.domain.Scan;
 import com.secureshield.phishing_backend.scan.flask.FlaskClient;
+import com.secureshield.phishing_backend.scan.flask.FlaskMessagePredictionResponse;
 import com.secureshield.phishing_backend.scan.flask.FlaskPredictionResponse;
 import com.secureshield.phishing_backend.scan.mapper.ScanMapper;
 import com.secureshield.phishing_backend.scan.persistence.entity.ScanEntity;
@@ -59,7 +60,6 @@ public class ScanServiceImpl implements ScanService {
                         .getAuthentication();
 
 
-        // Logged in user
         if (authentication != null
                 && authentication.isAuthenticated()
                 && !(authentication instanceof AnonymousAuthenticationToken)) {
@@ -90,21 +90,91 @@ public class ScanServiceImpl implements ScanService {
         }
 
 
-        // Guest user
         return scanMapper.toScanResponse(scan);
     }
 
 
     @Override
-    public ScanReportResponse getScanReport(String reference) {
+    public MessageScanResponse scanMessage(MessageScanRequest request) {
+
+        FlaskMessagePredictionResponse flaskResponse =
+                flaskClient.predictMessage(request.getMessage());
+
+        Scan scan = scanMapper.fromMessageFlaskResponse(
+                flaskResponse,
+                request.getMessage()
+        );
+
+        scan.setReference(generateReference());
+        scan.setScanType(ScanType.MESSAGE);
+        scan.setScannedAt(OffsetDateTime.now());
+
+
+        if (scan.getUrlsFound() == null || scan.getUrlsFound().isEmpty()) {
+
+            scan.setConclusion(
+                    "Message classified as "
+                            + scan.getOverallPrediction()
+                            + ". No URLs were detected."
+            );
+
+        } else {
+
+            scan.setConclusion(
+                    String.format(
+                            "Message classified as %s. %d URL(s) were detected and analyzed. View the details for URL-specific explanations.",
+                            scan.getOverallPrediction(),
+                            scan.getUrlsFound().size()
+                    )
+            );
+        }
+
+        scan.setFormattedExplanation(null);
+        scan.setLegitimateReasons(List.of());
+        scan.setPhishingReasons(List.of());
+
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication != null
+                && authentication.isAuthenticated()
+                && !(authentication instanceof AnonymousAuthenticationToken)) {
+
+            String email = authentication.getName();
+
+            UserEntity user =
+                    userRepository.findByEmail(email)
+                            .orElseThrow();
+
+            ScanEntity entity = scanMapper.toEntity(scan);
+            entity.setUser(user);
+
+            ScanEntity saved = scanRepository.save(entity);
+
+            return scanMapper.toMessageScanResponse(
+                    scanMapper.toDomain(saved)
+            );
+        }
+
+        return scanMapper.toMessageScanResponse(scan);
+    }
+
+
+    @Override
+    public ScanReportResponse getScanByReference(String reference) {
 
         ScanEntity entity =
                 scanRepository.findByReference(reference)
                         .orElseThrow();
 
-        return scanMapper.toScanReportResponse(
-                scanMapper.toDomain(entity));
+        Scan scan = scanMapper.toDomain(entity);
 
+        if (scan.getScanType() == ScanType.URL) {
+
+            return scanMapper.toUrlScanReportResponse(scan);
+        }
+
+        return scanMapper.toMessageScanReportResponse(scan);
     }
 
     private String generateReference() {
@@ -114,10 +184,17 @@ public class ScanServiceImpl implements ScanService {
     }
 
     @Override
-    public ScanHistoryResponse getScanHistory(String email) {
+    public ScanHistoryResponse getAllScans(String email, ScanType type) {
 
-        List<ScanHistoryItem> scans = scanRepository.findByUserEmail(email)
-                .stream()
+        List<ScanEntity> entities;
+
+        if (type == null) {
+            entities = scanRepository.findByUserEmail(email);
+        } else {
+            entities = scanRepository.findByUserEmailAndScanType(email, type);
+        }
+
+        List<ScanHistoryItem> scans = entities.stream()
                 .map(scanMapper::toDomain)
                 .map(scanMapper::toScanHistoryItem)
                 .toList();

@@ -3,11 +3,9 @@ package com.secureshield.phishing_backend.scan.flask;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.server.ResponseStatusException;
 
 @Component
 @RequiredArgsConstructor
@@ -34,6 +32,28 @@ public class FlaskClient {
             throw new FlaskValidationException(ex.getResponseBodyAsString());
         }
 
-        }
     }
+
+    public FlaskMessagePredictionResponse predictMessage(String message) {
+
+        FlaskMessagePredictionRequest request =
+                new FlaskMessagePredictionRequest(message);
+
+        try {
+
+            return restClient.post()
+                    .uri(flaskBaseUrl + "/predict/message")
+                    .body(request)
+                    .retrieve()
+                    .body(FlaskMessagePredictionResponse.class);
+
+        } catch (HttpClientErrorException.BadRequest ex) {
+
+            throw new FlaskValidationException(
+                    ex.getResponseBodyAsString());
+
+        }
+
+    }
+}
 

@@ -1,10 +1,7 @@
 package com.secureshield.phishing_backend.scan.api;
 
 import com.secureshield.backend.api.ScansApi;
-import com.secureshield.backend.model.ScanHistoryResponse;
-import com.secureshield.backend.model.ScanReportResponse;
-import com.secureshield.backend.model.ScanRequest;
-import com.secureshield.backend.model.ScanResponse;
+import com.secureshield.backend.model.*;
 import com.secureshield.phishing_backend.scan.service.impl.ScanService;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
@@ -34,20 +31,24 @@ public class ScanController implements ScansApi {
 
     @Override
     public ResponseEntity<ScanReportResponse> getScanByReference(String reference) {
-        ScanReportResponse response = scanService.getScanReport(reference);
+        ScanReportResponse response = scanService.getScanByReference(reference);
 
         return ResponseEntity.ok(response);
     }
 
     @Override
-    public ResponseEntity<ScanHistoryResponse> getScanHistory() {
+    public ResponseEntity<ScanHistoryResponse> getAllScans(ScanType type) {
+
         Authentication authentication =
                 SecurityContextHolder
                         .getContext()
                         .getAuthentication();
 
         String email = authentication.getName();
-        ScanHistoryResponse response = scanService.getScanHistory(email);
+
+        ScanHistoryResponse response =
+                scanService.getAllScans(email, type);
+
         return ResponseEntity.ok(response);
     }
 
@@ -79,6 +80,16 @@ public class ScanController implements ScansApi {
                 .body(csv);
     }
 
+
+    @Override
+    public ResponseEntity<MessageScanResponse> scanMessage(
+            MessageScanRequest request) {
+
+        MessageScanResponse response =
+                scanService.scanMessage(request);
+
+        return ResponseEntity.ok(response);
+    }
 }
 
 
