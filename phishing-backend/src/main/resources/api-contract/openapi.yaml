@@ -14,8 +14,8 @@ info:
       - Feedback management
 
 servers:
-  - url: http://localhost:8080/api/v1
-    description: Local Development
+  - url: https://mud-cable-passerby.ngrok-free.dev
+    description: Public ngrok server
 
 tags:
   - name: Authentication
@@ -103,7 +103,8 @@ paths:
     post:
       tags:
         - Authentication
-
+      security:
+        - bearerAuth: [ ]
       summary: Logout current user
 
       operationId: logoutUser
@@ -117,6 +118,9 @@ paths:
     post:
       tags:
         - Scans
+      security:
+        - bearerAuth: [ ]
+        - { }
       summary: Analyze a URL for Phishing
       operationId: scanUrl
       description: |
@@ -164,7 +168,9 @@ paths:
     post:
       tags:
         - Scans
-
+      security:
+        - bearerAuth: [ ]
+        - { }
       summary: Analyze a message for phishing
 
       operationId: scanMessage

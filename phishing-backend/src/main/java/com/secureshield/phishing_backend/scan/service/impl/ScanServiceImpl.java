@@ -46,7 +46,6 @@ public class ScanServiceImpl implements ScanService {
                         request.getUrl()
                 );
 
-
         scan.setReference(generateReference());
 
         scan.setScannedAt(
