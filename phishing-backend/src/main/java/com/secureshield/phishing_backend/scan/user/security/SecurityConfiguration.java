@@ -56,13 +56,15 @@ public class SecurityConfiguration {
                         .requestMatchers(
                                 org.springframework.http.HttpMethod.POST,
                                 "/scans/url",
-                                "/scans/messages"
+                                "/scans/messages",
+                                "/feedback"
                         )
                         .permitAll()
 
                         .requestMatchers(
                                 org.springframework.http.HttpMethod.GET,
-                                "/scans"
+                                "/scans",
+                                "/feedback"
                         )
                         .authenticated()
 

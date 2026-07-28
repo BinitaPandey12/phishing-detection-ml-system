@@ -13,5 +13,7 @@
     <include file="004-rename-user-table.xml" relativeToChangelogFile="true"/>
     <include file="005-add-user-id-to-scan.xml" relativeToChangelogFile="true"/>
     <include file="006-add-message-scan-columns.xml" relativeToChangelogFile="true"/>
+    <include file="007-create-feedback-table.xml" relativeToChangelogFile="true"/>
+    <include file="008-make-feedback-scan-id-nullable.xml" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>
