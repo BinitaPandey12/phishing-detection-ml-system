@@ -20,18 +20,24 @@ public interface ScanMapper {
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "scannedAt", ignore = true)
-
     @Mapping(target = "reference", ignore = true)
     @Mapping(target = "scanType", constant = "URL")
-
+    @Mapping(target = "url", source = "url")
+    @Mapping(target = "overallPrediction", source = "response.prediction")
     @Mapping(target = "message", ignore = true)
     @Mapping(target = "messagePrediction", ignore = true)
     @Mapping(target = "messagePhishingReasons", ignore = true)
     @Mapping(target = "messageLegitimateReasons", ignore = true)
-
     @Mapping(target = "urlsFound", ignore = true)
     @Mapping(target = "urlResults", ignore = true)
-    Scan fromFlaskResponse(FlaskPredictionResponse response, String url);
+    Scan fromFlaskResponse(
+            FlaskPredictionResponse response,
+            String url
+    );
+
+    default Prediction map(String prediction) {
+        return prediction == null ? null : Prediction.valueOf(prediction);
+    }
 
     ScanHistoryItem toScanHistoryItem(Scan scan);
 

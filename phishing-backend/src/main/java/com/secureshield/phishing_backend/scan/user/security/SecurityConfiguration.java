@@ -55,7 +55,7 @@ public class SecurityConfiguration {
 
                         .requestMatchers(
                                 org.springframework.http.HttpMethod.POST,
-                                "/scans",
+                                "/scans/url",
                                 "/scans/messages"
                         )
                         .permitAll()
