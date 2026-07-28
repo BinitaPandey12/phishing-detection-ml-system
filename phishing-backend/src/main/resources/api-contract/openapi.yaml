@@ -265,9 +265,35 @@ paths:
         - Feedback
       summary: Submit user feedback
       operationId: submitFeedback
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeedbackRequest'
       responses:
         "201":
           description: Feedback submitted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackResponse'
+
+    get:
+      tags:
+        - Feedback
+      summary: Get all feedback
+      operationId: getFeedback
+      responses:
+        "200":
+          description: All feedback
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FeedbackResponse'
+
 
 components:
   schemas:
@@ -593,6 +619,38 @@ components:
           format: email
         role:
           $ref: "#/components/schemas/UserRole"
+
+    FeedbackRequest:
+      type: object
+      required:
+        - message
+      properties:
+        scanId:
+          type: string
+          format: uuid
+          nullable: true
+          example: "c15a3610-0ccf-4764-bc97-ab6a578deb49"
+
+        message:
+          type: string
+          example: "Prediction was wrong"
+
+
+    FeedbackResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "8f4a1c7e-3b2d-4a1f-9e5c-2d7b8a6f4e10"
+
+        message:
+          type: string
+          example: "Prediction was wrong"
+
+        reply:
+          type: string
+          example: "Thank you for your feedback. We will review it."
 
     ScanType:
       type: string
