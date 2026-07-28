@@ -1,13 +1,40 @@
+from urllib.parse import urljoin, urlparse
+import socket
+import ssl
+from datetime import datetime, timezone
 import re
 import ipaddress
 import requests
 import dns.resolver
 import whois
-
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from urllib.parse import urlparse
-
 from bs4 import BeautifulSoup
+import time
+import whois
+
+whois_cache = {}
+page_cache = {}
+dns_cache = {}
+
+
+def get_whois_data(url):
+
+    hostname = urlparse(url).hostname
+
+    if hostname in whois_cache:
+        return whois_cache[hostname]
+
+    try:
+        data = whois.whois(hostname)
+
+        whois_cache[hostname] = data
+
+        return data
+
+    except Exception:
+        return None
 
 
 def having_ip_address(url):
@@ -123,7 +150,7 @@ def port(url):
 
 def redirect_feature(url):
     try:
-        response = requests.get(url, timeout=10)
+        response = requests.get(url, timeout=5)
 
         redirects = len(response.history)
 
@@ -139,28 +166,37 @@ def redirect_feature(url):
 
 
 def dns_record(url):
-    try:
-        hostname = urlparse(url).hostname
 
-        dns.resolver.resolve(hostname, "A")
+    hostname = urlparse(url).hostname
+
+    if hostname in dns_cache:
+        return dns_cache[hostname]
+
+    try:
+        dns.resolver.resolve(
+            hostname,
+            "A",
+            lifetime=2
+        )
+
+        dns_cache[hostname] = 1
 
         return 1
 
     except Exception:
+
+        dns_cache[hostname] = 0
+
         return 0
 
 
-
-
-from urllib.parse import urlparse
-from datetime import datetime, timezone
-import whois
-
 def age_of_domain(url):
     try:
-        hostname = urlparse(url).hostname
 
-        domain = whois.whois(hostname)
+        domain = get_whois_data(url)
+
+        if domain is None:
+            return 0
 
         creation_date = domain.creation_date
 
@@ -171,17 +207,12 @@ def age_of_domain(url):
             print("Creation date not found")
             return 0
 
-        # Make creation_date timezone-aware if needed
         if creation_date.tzinfo is None:
             creation_date = creation_date.replace(tzinfo=timezone.utc)
 
         now = datetime.now(timezone.utc)
 
         age_days = (now - creation_date).days
-
-        # print("Creation Date:", creation_date)
-        # print("Current Date:", now)
-        # print("Age Days:", age_days)
 
         return 1 if age_days >= 180 else 0
 
@@ -190,15 +221,12 @@ def age_of_domain(url):
         return 0
 
 
-from urllib.parse import urlparse
-from datetime import datetime, timezone
-import whois
-
 def domain_registration_length(url):
     try:
-        hostname = urlparse(url).hostname
+        domain = get_whois_data(url)
 
-        domain = whois.whois(hostname)
+        if domain is None:
+            return 0
 
         expiration_date = domain.expiration_date
 
@@ -209,7 +237,6 @@ def domain_registration_length(url):
             print("Expiration date not found")
             return 0
 
-        # Make timezone-aware if needed
         if expiration_date.tzinfo is None:
             expiration_date = expiration_date.replace(tzinfo=timezone.utc)
 
@@ -227,11 +254,6 @@ def domain_registration_length(url):
         print("domain_registration_length ERROR:", e)
         return 0
 
-
-from urllib.parse import urlparse
-from datetime import datetime
-import ssl
-import socket
 
 def ssl_final_state(url):
     try:
@@ -262,24 +284,36 @@ def ssl_final_state(url):
     except Exception as e:
         print("SSL ERROR:", e)
         return 0
-   
-    
+
+
 def fetch_page(url):
+
+    if url in page_cache:
+        return page_cache[url]
+
     try:
+
         response = requests.get(
             url,
-            timeout=10,
+            timeout=5,
             headers={
                 "User-Agent": "Mozilla/5.0"
             }
         )
 
-        return response.text
+        html = response.text
+
+        page_cache[url] = html
+
+        return html
 
     except Exception:
+
+        page_cache[url] = None
+
         return None
-    
-    
+
+
 def favicon(url):
     try:
         html = fetch_page(url)
@@ -305,8 +339,8 @@ def favicon(url):
 
     except Exception:
         return 0
-    
-    
+
+
 def submitting_to_email(url):
     try:
         html = fetch_page(url)
@@ -323,8 +357,8 @@ def submitting_to_email(url):
 
     except Exception:
         return 0
-    
-    
+
+
 def right_click(url):
     try:
         html = fetch_page(url)
@@ -348,9 +382,10 @@ def right_click(url):
 
     except Exception:
         return 0
-    
-    
- #TODO   
+
+ # TODO
+
+
 def iframe(url):
     try:
         html = fetch_page(url)
@@ -369,7 +404,8 @@ def iframe(url):
 
     except Exception:
         return 0
-    
+
+
 def on_mouseover(url):
     try:
         html = fetch_page(url)
@@ -386,12 +422,6 @@ def on_mouseover(url):
 
     except Exception:
         return 0
-    
-    
-from urllib.parse import urljoin, urlparse
-
-from urllib.parse import urljoin, urlparse
-from bs4 import BeautifulSoup
 
 
 def request_url(url):
@@ -428,7 +458,6 @@ def request_url(url):
 
             src = src.strip()
 
-            # Ignore inline/base64 resources
             if src.startswith("data:"):
                 continue
 
@@ -436,7 +465,6 @@ def request_url(url):
 
             parsed = urlparse(full_url)
 
-            # Relative URL -> internal
             if parsed.hostname is None:
                 total += 1
                 continue
@@ -462,9 +490,6 @@ def request_url(url):
 
     except Exception:
         return 0
-
-from urllib.parse import urljoin, urlparse
-from bs4 import BeautifulSoup
 
 
 def url_of_anchor(url):
@@ -527,7 +552,6 @@ def url_of_anchor(url):
 
             parsed = urlparse(full_url)
 
-            # Relative links are internal
             if parsed.hostname is None:
                 continue
 
@@ -557,9 +581,6 @@ def url_of_anchor(url):
 
     except Exception:
         return 0
-
-from urllib.parse import urljoin, urlparse
-from bs4 import BeautifulSoup
 
 
 def links_in_tags(url):
@@ -614,7 +635,6 @@ def links_in_tags(url):
 
             parsed = urlparse(full_url)
 
-            # Relative URL
             if parsed.hostname is None:
                 continue
 
@@ -648,9 +668,6 @@ def links_in_tags(url):
     except Exception:
         return 0
 
-from urllib.parse import urljoin, urlparse
-from bs4 import BeautifulSoup
-
 
 def sfh(url):
 
@@ -665,7 +682,6 @@ def sfh(url):
 
         forms = soup.find_all("form")
 
-        # No forms present
         if len(forms) == 0:
             return 1
 
@@ -682,19 +698,16 @@ def sfh(url):
 
             action = form.get("action")
 
-            # Empty action attribute
             if action is None:
                 suspicious += 1
                 continue
 
             action = action.strip()
 
-            # Blank or about:blank
             if action == "" or action.lower() == "about:blank":
                 suspicious += 1
                 continue
 
-            # javascript:void(0)
             if action.lower().startswith("javascript"):
                 suspicious += 1
                 continue
@@ -703,7 +716,6 @@ def sfh(url):
 
             parsed = urlparse(full_url)
 
-            # Relative URL -> same website
             if parsed.hostname is None:
                 continue
 
@@ -731,9 +743,6 @@ def sfh(url):
     except Exception:
         return 0
 
-from urllib.parse import urlparse
-import whois
-
 
 def abnormal_url(url):
 
@@ -746,7 +755,10 @@ def abnormal_url(url):
             .replace("www.", "")
         )
 
-        domain = whois.whois(hostname)
+        domain = get_whois_data(url)
+
+        if domain is None:
+            return 0
 
         registered = domain.domain_name
 
@@ -762,11 +774,9 @@ def abnormal_url(url):
             .replace("www.", "")
         )
 
-        # Exact match
         if hostname == registered:
             return 1
 
-        # Allow legitimate subdomains
         if hostname.endswith("." + registered):
             return 1
 
@@ -774,6 +784,7 @@ def abnormal_url(url):
 
     except Exception:
         return 0
+
 
 def popup_window(url):
 
@@ -805,57 +816,94 @@ def popup_window(url):
     except Exception:
         return 0
 
+
 def web_traffic(url):
     return 1
+
 
 def page_rank(url):
     return 1
 
+
 def google_index(url):
     return 1
+
 
 def links_pointing_to_page(url):
     return 1
 
+
 def statistical_report(url):
     return 1
-        
+
+
 def extract_url_features(url):
-    return {
-        "having_IP_Address": having_ip_address(url),
-        "URL_Length": url_length(url),
-        "Shortining_Service": shortening_service(url),
-        "having_At_Symbol": having_at_symbol(url),
-        "double_slash_redirecting": double_slash_redirecting(url),
-        "Prefix_Suffix": prefix_suffix(url),
-        "having_Sub_Domain": having_sub_domain(url),
-        "HTTPS_token": https_token(url),
-        "port": port(url),
-        "Redirect": redirect_feature(url),
-        "DNSRecord": dns_record(url),
-        "age_of_domain": age_of_domain(url),
-        "Domain_registeration_length": domain_registration_length(url),
-        "SSLfinal_State": ssl_final_state(url),
-        "Favicon": favicon(url),
-        "Submitting_to_email": submitting_to_email(url),
-        "RightClick": right_click(url),
-        "Iframe": iframe(url),
-        "on_mouseover": on_mouseover(url),
-        "Request_URL": request_url(url),
-        "URL_of_Anchor": url_of_anchor(url),
-        "Links_in_tags": links_in_tags(url),
-        "SFH": sfh(url),
-        "Abnormal_URL": abnormal_url(url),
-        "popUpWidnow": popup_window(url),
-        "web_traffic": web_traffic(url),
-        "Page_Rank": page_rank(url),
-        "Google_Index": google_index(url),
-        "Links_pointing_to_page": links_pointing_to_page(url),
-        "Statistical_report": statistical_report(url),
+
+    feature_functions = {
+
+        "having_IP_Address": having_ip_address,
+        "URL_Length": url_length,
+        "Shortining_Service": shortening_service,
+        "having_At_Symbol": having_at_symbol,
+        "double_slash_redirecting": double_slash_redirecting,
+        "Prefix_Suffix": prefix_suffix,
+        "having_Sub_Domain": having_sub_domain,
+        "HTTPS_token": https_token,
+        "port": port,
+
+        "Redirect": redirect_feature,
+        "DNSRecord": dns_record,
+
+        "age_of_domain": age_of_domain,
+        "Domain_registeration_length": domain_registration_length,
+
+        "SSLfinal_State": ssl_final_state,
+
+        "Favicon": favicon,
+        "Submitting_to_email": submitting_to_email,
+        "RightClick": right_click,
+        "Iframe": iframe,
+        "on_mouseover": on_mouseover,
+
+        "Request_URL": request_url,
+        "URL_of_Anchor": url_of_anchor,
+        "Links_in_tags": links_in_tags,
+        "SFH": sfh,
+
+        "Abnormal_URL": abnormal_url,
+        "popUpWidnow": popup_window,
+
+        "web_traffic": web_traffic,
+        "Page_Rank": page_rank,
+        "Google_Index": google_index,
+        "Links_pointing_to_page": links_pointing_to_page,
+        "Statistical_report": statistical_report
     }
 
+    start = time.perf_counter()
 
-url = "https://example.com//login"
+    with ThreadPoolExecutor(max_workers=20) as executor:
 
+        results = list(
+            executor.map(
+                lambda func: func(url),
+                feature_functions.values()
+            )
+        )
 
-    
+    features = dict(
+        zip(
+            feature_functions.keys(),
+            results
+        )
+    )
+
+    total_time = time.perf_counter() - start
+
+    print(
+        "TOTAL FEATURE EXTRACTION:",
+        round(total_time, 4),
+        "seconds"
+    )
+
+    return features
