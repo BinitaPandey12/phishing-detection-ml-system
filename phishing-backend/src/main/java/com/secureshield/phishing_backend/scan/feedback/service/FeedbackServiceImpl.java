@@ -1,5 +1,7 @@
 package com.secureshield.phishing_backend.scan.feedback.service;
 
+import com.secureshield.backend.model.AccuracyFeedbackRequest;
+import com.secureshield.backend.model.AccuracyFeedbackResponse;
 import com.secureshield.backend.model.FeedbackRequest;
 import com.secureshield.backend.model.FeedbackResponse;
 import com.secureshield.phishing_backend.scan.feedback.domain.Feedback;
@@ -43,8 +45,8 @@ public class FeedbackServiceImpl implements FeedbackService {
         ScanEntity scan = null;
 
 
-        if (request.getScanId() != null) {
-            scan = scanRepository.findById(request.getScanId())
+        if (request.getReference() != null) {
+            scan = scanRepository.findByReference(request.getReference())
                     .orElseThrow(() ->
                             new RuntimeException("Scan not found"));
 
@@ -81,5 +83,53 @@ public class FeedbackServiceImpl implements FeedbackService {
                 .toList();
 
     }
+
+    @Override
+    public AccuracyFeedbackResponse submitAccuracyFeedback(
+            AccuracyFeedbackRequest request,
+            UUID userId) {
+
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() ->
+                        new RuntimeException("User not found"));
+
+        ScanEntity scan = scanRepository.findByReference(request.getReference())
+                .orElseThrow(() ->
+                        new RuntimeException("Scan not found"));
+
+        if (!scan.getUser().getId().equals(userId)) {
+            throw new RuntimeException("Not your scan");
+        }
+
+        FeedbackEntity entity = feedbackRepository
+                .findByUserIdAndScanId(userId, scan.getId())
+                .orElseGet(() -> {
+
+                    FeedbackEntity feedback = new FeedbackEntity();
+
+                    feedback.setUser(user);
+                    feedback.setScan(scan);
+
+                    return feedback;
+                });
+
+        entity.setAccurate(request.getAccurate());
+
+        entity.setMessage(null);
+
+        FeedbackEntity savedEntity =
+                feedbackRepository.save(entity);
+
+        Feedback saved =
+                mapper.toDomain(savedEntity);
+
+        AccuracyFeedbackResponse response =
+                mapper.toAccuracyResponse(saved);
+
+        response.setReference(scan.getReference());
+
+        return response;
+    }
+
 
 }

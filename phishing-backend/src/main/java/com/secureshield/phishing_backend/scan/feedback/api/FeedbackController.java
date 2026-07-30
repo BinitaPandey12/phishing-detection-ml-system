@@ -1,6 +1,8 @@
 package com.secureshield.phishing_backend.scan.feedback.api;
 
 import com.secureshield.backend.api.FeedbackApi;
+import com.secureshield.backend.model.AccuracyFeedbackRequest;
+import com.secureshield.backend.model.AccuracyFeedbackResponse;
 import com.secureshield.backend.model.FeedbackRequest;
 import com.secureshield.backend.model.FeedbackResponse;
 import com.secureshield.phishing_backend.scan.feedback.CurrentUser;
@@ -42,5 +44,21 @@ public class FeedbackController implements FeedbackApi {
         return ResponseEntity.ok(
                 feedbackService.getFeedback(userId)
         );
+    }
+
+    @Override
+    public ResponseEntity<AccuracyFeedbackResponse> submitAccuracyFeedback(
+            AccuracyFeedbackRequest request) {
+
+        UUID userId = currentUser.getUserId();
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(
+                        feedbackService.submitAccuracyFeedback(
+                                request,
+                                userId
+                        )
+                );
     }
 }
