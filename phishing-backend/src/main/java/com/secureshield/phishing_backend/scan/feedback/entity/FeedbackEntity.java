@@ -29,14 +29,15 @@ public class FeedbackEntity {
     private UserEntity user;
 
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(
-            name = "scan_id"
-    )
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "scan_id")
     private ScanEntity scan;
 
-    @Column(nullable = false, length = 1000)
+    @Column(length = 1000)
     private String message;
+
+    @Column
+    private Boolean accurate;
 
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;

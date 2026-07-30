@@ -15,5 +15,7 @@
     <include file="006-add-message-scan-columns.xml" relativeToChangelogFile="true"/>
     <include file="007-create-feedback-table.xml" relativeToChangelogFile="true"/>
     <include file="008-make-feedback-scan-id-nullable.xml" relativeToChangelogFile="true"/>
+    <include file="009-update-feedback-table-for-accuracy.xml" relativeToChangelogFile="true"/>
+
 
 </databaseChangeLog>

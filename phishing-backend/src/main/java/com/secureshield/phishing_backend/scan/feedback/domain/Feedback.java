@@ -22,5 +22,7 @@ public class Feedback {
 
     private String message;
 
+    private boolean accurate;
+
     private OffsetDateTime createdAt;
 }
