@@ -264,6 +264,7 @@ paths:
       tags:
         - Feedback
       summary: Submit user feedback
+      description: Submit user feedback for specific scanid or  general feedback
       operationId: submitFeedback
       requestBody:
         required: true
@@ -624,17 +625,16 @@ components:
       type: object
       required:
         - message
+      example:
+        message: "Prediction was wrong"
       properties:
         scanId:
           type: string
           format: uuid
           nullable: true
-          example: "c15a3610-0ccf-4764-bc97-ab6a578deb49"
-
+          description: Optional scan ID for scan-specific feedback.
         message:
           type: string
-          example: "Prediction was wrong"
-
 
     FeedbackResponse:
       type: object
