@@ -18,6 +18,38 @@ whois_cache = {}
 page_cache = {}
 dns_cache = {}
 
+def normalize_url(url):
+    url = url.strip()
+
+    if not url:
+        raise ValueError("URL cannot be empty")
+
+    if url.startswith(("http://", "https://")):
+        return url
+
+    https_url = "https://" + url
+
+    try:
+        requests.get(
+            https_url,
+            timeout=5,
+            allow_redirects=False
+        )
+        return https_url
+    except requests.RequestException:
+        pass
+
+    http_url = "http://" + url
+
+    try:
+        requests.get(
+            http_url,
+            timeout=5,
+            allow_redirects=False
+        )
+        return http_url
+    except requests.RequestException:
+        return https_url
 
 def get_whois_data(url):
 
@@ -169,28 +201,40 @@ def dns_record(url):
 
     hostname = urlparse(url).hostname
 
+    if not hostname:
+        return 0
+
+    hostname = hostname.lower()
+
     if hostname in dns_cache:
         return dns_cache[hostname]
 
-    try:
-        dns.resolver.resolve(
-            hostname,
-            "A",
-            lifetime=2
-        )
+    record_types = ["A", "AAAA"]
 
-        dns_cache[hostname] = 1
+    for record_type in record_types:
 
-        return 1
+        try:
 
-    except Exception:
+            dns.resolver.resolve(
+                hostname,
+                record_type,
+                lifetime=3
+            )
 
-        dns_cache[hostname] = 0
+            dns_cache[hostname] = 1
 
-        return 0
+            return 1
+
+        except Exception:
+            continue
+
+    dns_cache[hostname] = 0
+
+    return 0
 
 
 def age_of_domain(url):
+
     try:
 
         domain = get_whois_data(url)
@@ -204,25 +248,33 @@ def age_of_domain(url):
             creation_date = creation_date[0]
 
         if creation_date is None:
-            print("Creation date not found")
             return 0
 
         if creation_date.tzinfo is None:
-            creation_date = creation_date.replace(tzinfo=timezone.utc)
+            creation_date = creation_date.replace(
+                tzinfo=timezone.utc
+            )
 
         now = datetime.now(timezone.utc)
 
         age_days = (now - creation_date).days
 
-        return 1 if age_days >= 180 else 0
+        if age_days >= 180:
+            return 1
+
+        return 0
 
     except Exception as e:
-        print("age_of_domain ERROR:", e)
+
+        print("Age of domain error:", e)
+
         return 0
 
 
 def domain_registration_length(url):
+
     try:
+
         domain = get_whois_data(url)
 
         if domain is None:
@@ -234,29 +286,38 @@ def domain_registration_length(url):
             expiration_date = expiration_date[0]
 
         if expiration_date is None:
-            print("Expiration date not found")
             return 0
 
         if expiration_date.tzinfo is None:
-            expiration_date = expiration_date.replace(tzinfo=timezone.utc)
+            expiration_date = expiration_date.replace(
+                tzinfo=timezone.utc
+            )
 
         now = datetime.now(timezone.utc)
 
-        remaining_days = (expiration_date - now).days
+        remaining_days = (
+            expiration_date - now
+        ).days
 
-        print("Expiration Date:", expiration_date)
-        print("Current Date:", now)
-        print("Remaining Days:", remaining_days)
+        if remaining_days > 365:
+            return 1
 
-        return 1 if remaining_days > 365 else 0
+        return 0
 
     except Exception as e:
-        print("domain_registration_length ERROR:", e)
+
+        print(
+            "Domain registration length error:",
+            e
+        )
+
         return 0
 
 
 def ssl_final_state(url):
+
     try:
+
         parsed = urlparse(url)
 
         if parsed.scheme.lower() != "https":
@@ -264,54 +325,120 @@ def ssl_final_state(url):
 
         hostname = parsed.hostname
 
+        if not hostname:
+            return 0
+
         context = ssl.create_default_context()
 
-        with socket.create_connection((hostname, 443), timeout=5) as sock:
-            with context.wrap_socket(sock, server_hostname=hostname) as ssock:
+        with socket.create_connection(
+            (hostname, 443),
+            timeout=8
+        ) as sock:
+
+            with context.wrap_socket(
+                sock,
+                server_hostname=hostname
+            ) as ssock:
 
                 cert = ssock.getpeercert()
 
-                not_after = datetime.strptime(
-                    cert["notAfter"],
+                if not cert:
+                    return 0
+
+                not_after = cert.get("notAfter")
+
+                if not not_after:
+                    return 0
+
+                expiration = datetime.strptime(
+                    not_after,
                     "%b %d %H:%M:%S %Y %Z"
                 )
 
-                if not_after < datetime.utcnow():
-                    return 0
+                expiration = expiration.replace(
+                    tzinfo=timezone.utc
+                )
 
-                return 1
+                now = datetime.now(timezone.utc)
+
+                if expiration > now:
+                    return 1
+
+                return 0
 
     except Exception as e:
+
         print("SSL ERROR:", e)
+
         return 0
 
 
 def fetch_page(url):
+    """
+    Fetch webpage with retries and browser-like headers.
+    Returns HTML or None if the page cannot be retrieved.
+    """
 
     if url in page_cache:
         return page_cache[url]
 
-    try:
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/151.0.0.0 Safari/537.36"
+        ),
+        "Accept": (
+            "text/html,application/xhtml+xml,"
+            "application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
+        ),
+        "Accept-Language": "en-US,en;q=0.9",
+        "Connection": "keep-alive",
+    }
 
-        response = requests.get(
-            url,
-            timeout=5,
-            headers={
-                "User-Agent": "Mozilla/5.0"
-            }
-        )
+    for attempt in range(2):
 
-        html = response.text
+        try:
+            response = requests.get(
+                url,
+                headers=headers,
+                timeout=8,
+                allow_redirects=True,
+                verify=True
+            )
 
-        page_cache[url] = html
+            if response.status_code >= 200 and response.status_code < 400:
 
-        return html
+                content_type = response.headers.get(
+                    "Content-Type",
+                    ""
+                ).lower()
 
-    except Exception:
+                if "text/html" in content_type or not content_type:
 
-        page_cache[url] = None
+                    html = response.text
 
-        return None
+                    page_cache[url] = html
+
+                    return html
+
+            print(
+                f"Page request failed (attempt {attempt + 1}): "
+                f"HTTP {response.status_code}"
+            )
+
+        except requests.RequestException as e:
+
+            print(
+                f"Page request failed (attempt {attempt + 1}): {e}"
+            )
+
+        if attempt == 0:
+            time.sleep(1)
+
+    page_cache[url] = None
+
+    return None
 
 
 def favicon(url):
@@ -818,26 +945,28 @@ def popup_window(url):
 
 
 def web_traffic(url):
-    return 1
+    return 0.5
 
 
 def page_rank(url):
-    return 1
+    return 0.5
 
 
 def google_index(url):
-    return 1
+    return 0.5
 
 
 def links_pointing_to_page(url):
-    return 1
+    return 0.5
 
 
 def statistical_report(url):
-    return 1
+    return 0.5
 
 
 def extract_url_features(url):
+    
+    url = normalize_url(url)
 
     feature_functions = {
 
@@ -907,3 +1036,15 @@ def extract_url_features(url):
     )
 
     return features
+
+if __name__ == "__main__":
+    url = "binita.com"
+
+    features = extract_url_features(url)
+
+    print("\n========== binita.com==========")
+
+    for name, value in features.items():
+        print(f"{name}: {value}")
+
+    print("===================================")

@@ -52,5 +52,23 @@ CONCEPT_EXPLANATIONS = {
         "type": "legitimate",
         "reason":
             "The message referred to normal scheduling activities such as appointments, meetings, dates, or planning."
+    },
+    
+    "MONEY_REQUEST": {
+        "type": "phishing",
+        "reason":
+        "The message requested money or financial assistance from the recipient, which can be a characteristic of financial scams."
+    },
+
+    "PROFIT_PROMISE": {
+        "type": "phishing",
+        "reason":
+            "The message promised an unusually high financial return or profit, which can be an indicator of an investment or money-making scam."
+    },
+
+    "FINANCIAL_SCAM": {
+        "type": "phishing",
+        "reason":
+            "The message combined a financial request or opportunity with potentially suspicious promises about money or returns."
     }
 }

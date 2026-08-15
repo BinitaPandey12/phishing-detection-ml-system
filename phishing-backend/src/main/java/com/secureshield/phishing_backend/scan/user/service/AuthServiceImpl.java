@@ -35,7 +35,6 @@ public class AuthServiceImpl implements AuthService {
             throw new IllegalArgumentException("Email already exists.");
         }
 
-
         User user = User.builder()
                 .id(UUID.randomUUID())
                 .firstName(request.getFirstName())
@@ -79,7 +78,5 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void logout() {
-        // Stateless JWT.
-        // Frontend simply removes the token.
     }
 }

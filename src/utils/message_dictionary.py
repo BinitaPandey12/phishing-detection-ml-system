@@ -150,5 +150,31 @@ WORD_TO_CONCEPT = {
     "afternoon": "SCHEDULE",
 
     "meeting tomorrow": "SCHEDULE",
-    "next monday": "SCHEDULE"
+    "next monday": "SCHEDULE",
+    
+    "need money": "MONEY_REQUEST",
+    "send money": "MONEY_REQUEST",
+    "lend money": "MONEY_REQUEST",
+    "borrow money": "MONEY_REQUEST",
+    "give me money": "MONEY_REQUEST",
+    "need some money": "MONEY_REQUEST",
+    "loan": "MONEY_REQUEST",
+    "lend": "MONEY_REQUEST",
+    "borrow": "MONEY_REQUEST",
+
+    "profit": "PROFIT_PROMISE",
+    "return": "PROFIT_PROMISE",
+    "earn": "PROFIT_PROMISE",
+    "guaranteed profit": "PROFIT_PROMISE",
+    "high return": "PROFIT_PROMISE",
+    "financial return": "PROFIT_PROMISE",
+    "25%": "PROFIT_PROMISE",
+    "50%": "PROFIT_PROMISE",
+    "100% return": "PROFIT_PROMISE",
+
+    "investment": "FINANCIAL_SCAM",
+    "invest": "FINANCIAL_SCAM",
+    "investment opportunity": "FINANCIAL_SCAM",
+    "make money": "FINANCIAL_SCAM",
+    "easy money": "FINANCIAL_SCAM"
 }

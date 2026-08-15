@@ -31,7 +31,6 @@ def explain_prediction(features):
             "SHAP_Value": shap_values[0],
         }
     )
-    # print("\n=== Feature Contributions ===")
     print(feature_contributions[["Feature", "Feature_Value", "SHAP_Value"]])
 
     feature_contributions["Abs_SHAP"] = (
@@ -80,8 +79,8 @@ def generate_explanation(features):
     phishing_total = result["phishing_total"]
     legitimate_total = result["legitimate_total"]
 
-    top_phishing = phishing_push.head(5)
-    top_legitimate = legitimate_push.head(5)
+    top_phishing = phishing_push.head(3)
+    top_legitimate = legitimate_push.head(3)
 
     prediction = predict_url(features)
     print("Raw Prediction:", prediction)
