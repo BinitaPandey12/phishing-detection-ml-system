@@ -1,14 +1,15 @@
 import json
-from pathlib import Path
-
 import pandas as pd
 import shap
-from models.predict import predict_url, model
+from models.predict import predict_url
 from src.utils.feature_description import feature_descriptions
 
-BASE_DIR = Path(__file__).resolve().parents[2]
+from xgboost import XGBClassifier
 
-with open(BASE_DIR / "notebooks" / "model_metadata.json") as f:
+model = XGBClassifier()
+model.load_model("models/url/xgb_model.ubj")
+
+with open("notebooks/model_metadata.json") as f:
     metadata = json.load(f)
 
 FEATURE_ORDER = metadata["feature_order"]
