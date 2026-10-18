@@ -13,8 +13,10 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 
 MODEL_PATH = BASE_DIR / "models" / "message" / "message_svm_final.joblib"
 
-svm_model = joblib.load(MODEL_PATH)
-vectorizer = joblib.load(VECTORIZER_PATH)
+message_model = joblib.load(MODEL_PATH)
+
+vectorizer = message_model.named_steps["tfidf"]
+svm_model = message_model.named_steps["classifier"]
 
 
 def remove_urls(text):
